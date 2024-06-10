@@ -62,6 +62,26 @@ route.get("/all-posts", async (req, res) => {
   res.status(200).json(allPosts);
 });
 
+route.post("/like-post/:id", authCheck, async (req, res) => {
+  const findPost = await postModel.findById(req.params.id);
+  if (findPost.liked.includes(req.userID.user)) {
+    findPost.liked = findPost.liked.filter((id) => id != req.userID.user);
+    console.log("unlilked", findPost);
+    await findPost.save();
+    return res.status(202).json({user: req.userID.user, msg: "unliked"});
+  }
+  findPost.liked.push(req.userID.user);
+  await findPost.save();
+  console.log('liked',findPost);
+  res.status(200).json("liked successfully");
+});
+
+route.delete("/delete-post/:id", authCheck, async (req, res) => {
+  const deletePost = await postModel.findByIdAndDelete(req.params.id);
+  console.log("delet huaa", deletePost);
+  res.status(200).json({msg: "post deleted successfully"});
+});
+
 function authCheck(req, res, next) {
   const token = req.cookies.tokenn;
   if (!token) {
