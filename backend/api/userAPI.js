@@ -4,6 +4,53 @@ const bcrypt = require("bcrypt");
 const userModel = require("../models/userSchema");
 const postModel = require("../models/postSchema");
 var jwt = require("jsonwebtoken");
+const multer = require("multer");
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "public/image");
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, file.fieldname + "-" + uniqueSuffix + file.originalname);
+  },
+});
+const upload = multer({storage: storage});
+
+route.post("/upload", authCheck, upload.single("image"), async (req, res) => {
+  const edit = req.body.edit;
+  const findUser = await userModel.findById(req.userID.user);
+  if (!edit && !req.file) {
+    return res.status(400).json({msg: "please add post or upload image"});
+  }
+  if (edit && !req.file) {
+    const newPost = await postModel({post: edit, imagePath: "", user: findUser._id});
+    await newPost.save();
+    console.log("post created", newPost);
+    findUser.posts.push(edit);
+    await findUser.save();
+    return res.status(200).json({msg: "post created"});
+  } else if (edit == "undefined" && req.file) {
+    const newPost = await postModel({post: "", imagePath: req.file.filename, user: findUser._id});
+    await newPost.save();
+    console.log("image saved", newPost);
+    findUser.posts.push(edit);
+    await findUser.save();
+    return res.status(200).json({msg: "image uploaded"});
+  } else {
+    const newPost = await postModel({post: edit, imagePath: req.file.filename, user: findUser._id});
+    await newPost.save();
+    console.log("image and post created", newPost);
+    findUser.posts.push(edit);
+    await findUser.save();
+    return res.status(200).json({msg: "image and post uploded"});
+  }
+});
+
+route.post("/posts", authCheck, async (req, res) => {
+  const findUser = await userModel.findById(req.userID.user);
+  res.status(200).json({user: findUser, msg: "post created"});
+});
 
 route.post("/sign-up", async (req, res) => {
   const {name, email, password} = req.body;
@@ -17,13 +64,12 @@ route.post("/sign-up", async (req, res) => {
     return res.status(404).json({msg: "email is already registerd"});
   }
   bcrypt.hash(password, 10, async (err, hash) => {
-    const username = name + Math.floor(Math.random() * 1000).toString()
-    await userModel({name,username, email, password: hash}).save();
+    const username = name + Math.floor(Math.random() * 1000).toString();
+    await userModel({name, username, email, password: hash}).save();
     console.log("new user save huaa");
     return res.status(200).json({msg: "new user created"});
   });
 });
-
 
 route.post("/sign-in", async (req, res) => {
   const {email, password} = req.body;
@@ -44,18 +90,10 @@ route.post("/sign-in", async (req, res) => {
   });
 });
 
-route.post("/posts", authCheck, async (req, res) => {
-  const findUser = await userModel.findById(req.userID.user);
-  const {edit} = req.body;
-  if (!edit) {
-    return res.status(404).json({user: findUser, msg: "fill the post"});
-  }
-  const newPost = await postModel({post: edit, user: findUser._id});
-  await newPost.save();
-  findUser.posts.push(edit);
-  await findUser.save();
-  res.status(200).json({user: findUser, msg: "post created"});
-});
+route.get("/logout", (req, res)=>{
+  console.log('logout')
+ return res.cookie("tokenn", '').status(200).json({msg: "logout successfully"});
+})
 
 route.get("/all-posts", async (req, res) => {
   const allPosts = await postModel.find().populate("user");
@@ -72,7 +110,7 @@ route.post("/like-post/:id", authCheck, async (req, res) => {
   }
   findPost.liked.push(req.userID.user);
   await findPost.save();
-  console.log('liked',findPost);
+  console.log("liked", findPost);
   res.status(200).json("liked successfully");
 });
 
@@ -91,6 +129,5 @@ function authCheck(req, res, next) {
   req.userID = user;
   next();
 }
-
 
 module.exports = route;

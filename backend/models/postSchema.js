@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const postSchema = new mongoose.Schema({
   post: {
@@ -6,15 +6,18 @@ const postSchema = new mongoose.Schema({
   },
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'user',
+    ref: "user",
+  },
+  imagePath: {
+    type: String,
   },
   liked: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'user',
+      ref: "user",
     },
   ],
 });
 
-const post = mongoose.model('post', postSchema);
+const post = mongoose.model("post", postSchema);
 module.exports = post;
